@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Maré · Alarme de Hidratação</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #eaf6f6;
+        --surface: #ffffff;
+        --deep: #0b4f6c;
+        --deep-soft: #46788f;
+        --tide: #01baef;
+        --tide-dark: #0195c2;
+        --coral: #ff6b6b;
+        --sand: #ffd166;
+        --line: #cfe8e8;
+        --shadow: 0 12px 30px -12px rgba(11, 79, 108, 0.25);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at 15% -10%, #d8f2f1 0%, transparent 45%),
+          radial-gradient(circle at 110% 10%, #d3ecec 0%, transparent 40%),
+          var(--bg);
+        font-family: "Inter", sans-serif;
+        color: var(--deep);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 16px;
+      }
+
+      .app {
+        width: 100%;
+        max-width: 420px;
+        background: var(--surface);
+        border-radius: 28px;
+        box-shadow: var(--shadow);
+        padding: 32px 28px 28px;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--line);
+      }
+
+      .eyebrow {
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--deep-soft);
+        font-weight: 600;
+        margin: 0 0 4px;
+      }
+
+      h1 {
+        font-family: "Fraunces", serif;
+        font-weight: 600;
+        font-size: 28px;
+        margin: 0 0 24px;
+        letter-spacing: -0.01em;
+      }
+
+      /* ---- Tide gauge (signature element) ---- */
+      .gauge-wrap {
+        display: flex;
+        justify-content: center;
+        margin: 8px 0 20px;
+      }
+
+      .tank {
+        position: relative;
+        width: 132px;
+        height: 220px;
+        border-radius: 66px 66px 24px 24px;
+        background: #f2fbfb;
+        border: 3px solid var(--deep);
+        overflow: hidden;
+        box-shadow: inset 0 2px 8px rgba(11, 79, 108, 0.08);
+        transition: border-color 0.4s ease;
+      }
+
+      .tank.alarm {
+        border-color: var(--coral);
+        animation: shake 0.6s ease-in-out infinite;
+      }
+
+      @keyframes shake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        25% {
+          transform: translateX(-2px) rotate(-0.5deg);
+        }
+        75% {
+          transform: translateX(2px) rotate(0.5deg);
+        }
+      }
+
+      .water {
+        position: absolute;
+        bottom: 0;
+        left: -10%;
+        width: 120%;
+        height: 20%;
+        background: var(--tide);
+        transition:
+          height 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+          background 0.4s ease;
+      }
+      .tank.alarm .water {
+        background: var(--coral);
+      }
+
+      .wave {
+        position: absolute;
+        top: -14px;
+        left: 0;
+        width: 200%;
+        height: 24px;
+        background: radial-gradient(
+            circle,
+            rgba(255, 255, 255, 0.55) 30%,
+            transparent 32%
+          )
+          repeat-x;
+        background-size: 34px 24px;
+        animation: waveMove 2.6s linear infinite;
+        opacity: 0.7;
+      }
+      @keyframes waveMove {
+        from {
+          transform: translateX(0);
+        }
+        to {
+          transform: translateX(-34px);
+        }
+      }
+
+      .tank-label {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 2;
+        pointer-events: none;
+      }
+      .tank-count {
+        font-family: "Fraunces", serif;
+        font-size: 34px;
+        font-weight: 700;
+        color: var(--deep);
+        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+      }
+      .tank.alarm .tank-count {
+        color: #fff;
+        text-shadow: none;
+      }
+      .tank-goal {
+        font-size: 12px;
+        color: var(--deep-soft);
+        font-weight: 600;
+      }
+      .tank.alarm .tank-goal {
+        color: #fff2f2;
+      }
+
+      /* ---- Timer / status ---- */
+      .status {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .status-text {
+        font-size: 13px;
+        color: var(--deep-soft);
+        font-weight: 500;
+        margin-bottom: 2px;
+      }
+      .countdown {
+        font-family: "Fraunces", serif;
+        font-size: 40px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+      }
+      .countdown.ringing {
+        color: var(--coral);
+      }
+
+      /* ---- Buttons ---- */
+      .row {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      button {
+        font-family: "Inter", sans-serif;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        border-radius: 14px;
+        transition:
+          transform 0.15s ease,
+          box-shadow 0.15s ease,
+          background 0.2s ease;
+      }
+      button:active {
+        transform: scale(0.97);
+      }
+
+      .btn-primary {
+        flex: 1;
+        background: var(--deep);
+        color: #fff;
+        padding: 14px 16px;
+        font-size: 15px;
+        box-shadow: 0 8px 18px -8px rgba(11, 79, 108, 0.5);
+      }
+      .btn-primary:hover {
+        background: #093f57;
+      }
+      .btn-primary.stop {
+        background: var(--coral);
+        box-shadow: 0 8px 18px -8px rgba(255, 107, 107, 0.5);
+      }
+
+      .btn-secondary {
+        background: #f0f8f8;
+        color: var(--deep);
+        padding: 14px 16px;
+        font-size: 15px;
+        border: 1px solid var(--line);
+      }
+      .btn-secondary:hover {
+        background: #e5f3f3;
+      }
+
+      .btn-drink {
+        width: 100%;
+        background: var(--tide);
+        color: #fff;
+        padding: 16px;
+        font-size: 16px;
+        border-radius: 16px;
+        margin-bottom: 18px;
+        box-shadow: 0 10px 20px -10px rgba(1, 186, 239, 0.6);
+      }
+      .btn-drink:hover {
+        background: var(--tide-dark);
+      }
+      .btn-drink:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      /* ---- Settings ---- */
+      .settings {
+        border-top: 1px solid var(--line);
+        padding-top: 16px;
+        display: flex;
+        gap: 12px;
+      }
+      .field {
+        flex: 1;
+      }
+      .field label {
+        display: block;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--deep-soft);
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+      .field input {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        font-family: "Inter", sans-serif;
+        font-size: 14px;
+        color: var(--deep);
+        background: #f8fcfc;
+      }
+      .field input:focus {
+        outline: 2px solid var(--tide);
+        outline-offset: 1px;
+      }
+
+      .hint {
+        text-align: center;
+        font-size: 12px;
+        color: var(--deep-soft);
+        margin-top: 14px;
+        line-height: 1.5;
+      }
+
+      @media (max-width: 380px) {
+        .app {
+          padding: 26px 20px 22px;
+        }
+        .tank {
+          width: 112px;
+          height: 190px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <p class="eyebrow">Maré</p>
+      <h1>Alarme de hidratação</h1>
+
+      <div class="gauge-wrap">
+        <div class="tank" id="tank">
+          <div class="water" id="water" style="height: 0%">
+            <div class="wave"></div>
+          </div>
+          <div class="tank-label">
+            <div class="tank-count" id="tankCount">0</div>
+            <div class="tank-goal" id="tankGoal">de 8 copos</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="status">
+        <div class="status-text" id="statusText">Pronto para começar</div>
+        <div class="countdown" id="countdown">--:--</div>
+      </div>
+
+      <button class="btn-drink" id="drinkBtn">Bebi um copo 💧</button>
+
+      <div class="row">
+        <button class="btn-primary" id="toggleBtn">Iniciar alarme</button>
+        <button class="btn-secondary" id="resetBtn">Reiniciar dia</button>
+      </div>
+
+      <div class="settings">
+        <div class="field">
+          <label for="intervalInput">Lembrar a cada (min)</label>
+          <input
+            type="number"
+            id="intervalInput"
+            min="1"
+            max="240"
+            value="60"
+          />
+        </div>
+        <div class="field">
+          <label for="goalInput">Meta (copos)</label>
+          <input type="number" id="goalInput" min="1" max="20" value="8" />
+        </div>
+      </div>
+
+      <p class="hint">
+        O alarme toca um som e pisca o marcador quando chega a hora. Deixe esta
+        aba aberta para funcionar.
+      </p>
+    </div>
+
+    <script>
+      const tank = document.getElementById("tank");
+      const water = document.getElementById("water");
+      const tankCount = document.getElementById("tankCount");
+      const tankGoal = document.getElementById("tankGoal");
+      const statusText = document.getElementById("statusText");
+      const countdownEl = document.getElementById("countdown");
+      const drinkBtn = document.getElementById("drinkBtn");
+      const toggleBtn = document.getElementById("toggleBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      const intervalInput = document.getElementById("intervalInput");
+      const goalInput = document.getElementById("goalInput");
+
+      let intervalMinutes = 60;
+      let goal = 8;
+      let consumed = 0;
+      let remainingSeconds = intervalMinutes * 60;
+      let timerId = null;
+      let running = false;
+      let alarmRinging = false;
+
+      function formatTime(totalSeconds) {
+        const m = Math.floor(totalSeconds / 60)
+          .toString()
+          .padStart(2, "0");
+        const s = Math.floor(totalSeconds % 60)
+          .toString()
+          .padStart(2, "0");
+        return m + ":" + s;
+      }
+
+      function updateTank() {
+        const pct = Math.min(100, (consumed / goal) * 100);
+        water.style.height = pct + "%";
+        tankCount.textContent = consumed;
+        tankGoal.textContent = "de " + goal + " copos";
+      }
+
+      function updateCountdown() {
+        countdownEl.textContent = formatTime(remainingSeconds);
+        countdownEl.classList.toggle("ringing", alarmRinging);
+      }
+
+      function beep() {
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const notes = [660, 880, 660];
+          notes.forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.0001, ctx.currentTime + i * 0.28);
+            gain.gain.exponentialRampToValueAtTime(
+              0.18,
+              ctx.currentTime + i * 0.28 + 0.02,
+            );
+            gain.gain.exponentialRampToValueAtTime(
+              0.0001,
+              ctx.currentTime + i * 0.28 + 0.24,
+            );
+            osc.connect(gain).connect(ctx.destination);
+            osc.start(ctx.currentTime + i * 0.28);
+            osc.stop(ctx.currentTime + i * 0.28 + 0.26);
+          });
+        } catch (e) {
+          /* audio not available */
+        }
+      }
+
+      function notify() {
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification("Hora de beber água 💧", {
+            body:
+              "Já se passaram " + intervalMinutes + " minutos. Beba um copo!",
+          });
+        }
+      }
+
+      function triggerAlarm() {
+        alarmRinging = true;
+        tank.classList.add("alarm");
+        drinkBtn.disabled = false;
+        statusText.textContent = "Hora de beber água!";
+        updateCountdown();
+        beep();
+        notify();
+      }
+
+      function stopAlarmVisuals() {
+        alarmRinging = false;
+        tank.classList.remove("alarm");
+      }
+
+      function tick() {
+        if (remainingSeconds <= 0) {
+          if (!alarmRinging) {
+            triggerAlarm();
+          }
+          return;
+        }
+        remainingSeconds--;
+        updateCountdown();
+      }
+
+      function startTimer() {
+        if ("Notification" in window && Notification.permission === "default") {
+          Notification.requestPermission();
+        }
+        running = true;
+        toggleBtn.textContent = "Pausar alarme";
+        toggleBtn.classList.add("stop");
+        statusText.textContent = "Contando até o próximo copo";
+        timerId = setInterval(tick, 1000);
+      }
+
+      function pauseTimer() {
+        running = false;
+        clearInterval(timerId);
+        toggleBtn.textContent = "Iniciar alarme";
+        toggleBtn.classList.remove("stop");
+        statusText.textContent = "Pausado";
+      }
+
+      function resetInterval() {
+        remainingSeconds = intervalMinutes * 60;
+        stopAlarmVisuals();
+        updateCountdown();
+        if (running) {
+          statusText.textContent = "Contando até o próximo copo";
+        }
+      }
+
+      drinkBtn.addEventListener("click", () => {
+        consumed++;
+        updateTank();
+        resetInterval();
+        if (consumed >= goal) {
+          statusText.textContent = "Meta do dia atingida! 🎉";
+        }
+      });
+
+      toggleBtn.addEventListener("click", () => {
+        if (running) {
+          pauseTimer();
+        } else {
+          startTimer();
+        }
+      });
+
+      resetBtn.addEventListener("click", () => {
+        consumed = 0;
+        pauseTimer();
+        remainingSeconds = intervalMinutes * 60;
+        stopAlarmVisuals();
+        updateTank();
+        updateCountdown();
+        statusText.textContent = "Pronto para começar";
+      });
+
+      intervalInput.addEventListener("change", () => {
+        let val = parseInt(intervalInput.value, 10);
+        if (isNaN(val) || val < 1) val = 1;
+        if (val > 240) val = 240;
+        intervalInput.value = val;
+        intervalMinutes = val;
+        resetInterval();
+      });
+
+      goalInput.addEventListener("change", () => {
+        let val = parseInt(goalInput.value, 10);
+        if (isNaN(val) || val < 1) val = 1;
+        if (val > 20) val = 20;
+        goalInput.value = val;
+        goal = val;
+        updateTank();
+      });
+
+      updateTank();
+      updateCountdown();
+    </script>
+  </body>
+</html>
